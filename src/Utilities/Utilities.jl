@@ -39,7 +39,8 @@ end
 function saveTrajectoriesToFile(filename::String,trs::Vector{VS.VSTrajectory{T}}) where {T}
     n = length(trs);
     state_dim = length(trs[1].u[1]);
-
+    
+	mkpath(dirname(filename));
     fid = HDF5.h5open(filename,"w");
 
     fid["type"] = repr(T);
@@ -89,6 +90,7 @@ end
 function saveEquilibriaToFile(filename::String, equilibria::Vector{Vector{T}} where T<:Real,
                               oP::AbstractMatrix,sd::AbstractMatrix,oqc::AbstractVector)
     n = length(equilibria);
+    mkpath(dirname(filename));
     fid = HDF5.h5open(filename,"w");
 
     HDF5.create_group(fid,"settings");
@@ -107,6 +109,7 @@ end
 function saveEquilibriaAndPosesToFile(filename::String, equilibria::Vector{Vector{T}} where T<:Real, poses::Vector{Vector{T}} where T<:Real,
     oP::AbstractMatrix,sd::AbstractMatrix,oqc::AbstractVector)
 n = length(equilibria);
+mkpath(dirname(filename));
 fid = HDF5.h5open(filename,"w");
 
 HDF5.create_group(fid,"settings");

@@ -510,6 +510,7 @@ function showTrajectoryVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vec
 
     # filename
     filename = isa(filename,Nothing) ? "videos/spatial_"*Dates.format(Dates.now(), "yyyymmdd-HH:MM")*".mp4" : "videos/"*filename*".mp4";
+    mkpath(dirname(filename));
 
     # cameras and tracks "objects", comments below are "element-wise"
     cameras = Vector{GLM.Observable}(undef,n); # matrix, depending on time; each column is a vertex of the camera shape
@@ -862,6 +863,7 @@ function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vecto
 
     # filename
     filename = isa(filename,Nothing) ? "videos/spatial_"*Dates.format(Dates.now(), "yyyymmdd-HH:MM")*".mp4" : "videos/"*filename*".mp4";
+    mkpath(dirname(filename));
 
     
     #=======
