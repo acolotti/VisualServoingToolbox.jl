@@ -143,3 +143,10 @@ function getVelocities(trs::Union{Vector{VSTrajectory{spatial}},Vector{VSTraject
     return tau;
 end
 
+function squaredDistance(::Union{typeof(spatial),typeof(spatialdesiredpose)},u::Vector{<:Real},v::Vector{<:Real})
+    norm²(v) = sum(e^2 for e in v);
+    qnorm_u = u[4:end]./LinearAlgebra.norm(u[4:end]);
+    qnorm_v = v[4:end]./LinearAlgebra.norm(v[4:end]);
+
+    return norm²(u[1:3]-v[1:3]) + min(norm²(qnorm_u - qnorm_v),norm²(qnorm_u + qnorm_v));
+end

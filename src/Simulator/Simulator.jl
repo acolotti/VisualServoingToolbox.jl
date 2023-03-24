@@ -86,9 +86,8 @@ function singleSimulation(f::Function, x0::AbstractArray{<:Real}, p::Vector{Any}
     if isa(terminal_state,Nothing)
         sol = isa(step_size,Nothing) ? DE.solve(prob,solver(),reltol=tol,abstol=tol) : DE.solve(prob,DE.RK4(),dt=step_size);
     else
-        norm²(v) = sum(v.^2);
-
-        condition(u,t,integrator) = (qnorm = LA.norm(u[4:end]);return (norm²(u[1:3]-terminal_state[1:3]) + min(norm²(u[4:end]./qnorm - terminal_state[4:end]),norm²(u[4:end]./qnorm + terminal_state[4:end]))-terminal_threshold^2));
+        condition(u,t,integrator) = VS.squaredDistance(f,u,terminal_state)-terminal_threshold^2;
+        
         affect!(integrator) = DE.terminate!(integrator);
         cb = DE.ContinuousCallback(condition,affect!);
         sol = isa(step_size,Nothing) ? DE.solve(prob,solver(),callback=cb) : DE.solve(prob,DE.RK4(),callback=cb,dt = step_size);

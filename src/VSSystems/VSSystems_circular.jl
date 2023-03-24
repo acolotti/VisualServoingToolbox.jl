@@ -47,3 +47,7 @@ function getError(::typeof(circular),x::AbstractVecOrMat,p::AbstractMatrix,retur
         return e;
     end
 end
+
+function squaredDistance(::typeof(circular),u::Vector{<:Real},v::Vector{<:Real})
+    return sum(e^2 for e in (u-v));
+end

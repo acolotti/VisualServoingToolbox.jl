@@ -75,3 +75,7 @@ function getTrackingPointsDepth(::typeof(planar),X::AbstractVecOrMat,P::Abstract
 
     return Z;
 end
+
+function squaredDistance(::typeof(planar),u::Vector{<:Real},v::Vector{<:Real})
+    return sum(e^2 for e in (u[1:2]-v[1:2])) + ((u[3]-v[3]) % (2*pi))^2;
+end
