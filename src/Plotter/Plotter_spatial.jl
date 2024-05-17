@@ -938,9 +938,9 @@ end
 
 function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps; axes_limits::Vector{T} where T<:Real = [0], azimuth = nothing, colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing,
     color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0], elevation = nothing, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
-    points_color::Union{GLM.Color,GLM.ColorAlpha,Symbol} = :black, point_size::Integer = 20, scale::Real=4, style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid)
-
-    # aggiungi azimuth e elevation
+    points_color::Union{GLM.Color,GLM.ColorAlpha,Symbol} = :black, point_size::Integer = 20, scale::Real=4, static_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, static_poses::Vector{Vector{T}} where T <: Real = [[0]],
+    style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid,
+    title::Union{Nothing,String,GLM.Makie.LaTeXStrings.LaTeXString} = nothing)
 
     #=======
 
@@ -952,9 +952,12 @@ function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps;
     
     n = length(intTrs);
     
-    # colors and style initialization
+    # title, colors and styles initialization
+    !isa(title,Nothing) && (ax.title = title);
     colors = colorsInitialization(colors, n, color_gradient);
     style = styleInitialization(style,n);
+
+    (static_poses != [[0]]) && (static_colors = colorsInitialization(static_colors,length(static_poses)));
 
     #=======
 
@@ -1015,6 +1018,13 @@ function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps;
         strokewidth = 2.5, linestyle = :dash, color = GLM.RGBA{Float32}(51/255,100/255,82/255,0.3f0), strokecolor = sc);
     end
 
+    if static_poses != [[0]]
+        for (i,pose) in enumerate(static_poses)
+            GLM.poly!(ax, transpose((R(pose)*transpose(v).*cameraScale).+p(pose)), f, 
+            strokewidth = 2.5, linestyle = :dash, color = static_colors[i], strokecolor = sc);
+        end
+    end
+
     #=======
 
     Initialize video stuff
@@ -1024,7 +1034,7 @@ function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps;
     # cameras and tracks "objects", comments below are "element-wise"
     cameras = Vector{GLM.Observable}(undef,n); # matrix, depending on time; each column is a vertex of the camera shape
     tracks = Vector{GLM.Observable}(undef,n); # list of 3D points, a point is added after each time-step; each point is the camera's position at a given time instant
-    
+
     for i in eachindex(intTrs)
         cameras[i] = GLM.@lift transpose((R(intTrs[i]($time))*transpose(v).*cameraScale).+p(intTrs[i]($time)));
         tracks[i] = GLM.Observable([GLM.Point3f(intTrs[i](time[]))]);
