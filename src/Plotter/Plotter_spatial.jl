@@ -131,20 +131,20 @@ function plotCameraTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spati
         end
     end
 
+    # camera shape definition
+    v,f,sc = getCameraShape();
+
+    R(x) = RC.quaternionToRotationMatrix(x[4:end]);
+    p(x) = x[1:3];
+
+    cameraScale = scale*minimum(ax.finallimits[].widths)/100; # by default, camera is ~8% w.r.t. the smallest axis width
+
     if desired_pose != [0]
         GLM.poly!(ax, transpose((R(desired_pose)*transpose(v).*cameraScale).+p(desired_pose)), f, 
         strokewidth = 2.5, linestyle = :dash, color = GLM.RGBA{Float32}(51/255,100/255,82/255,0.3f0), strokecolor = sc);
     end
 
     if show_cameras
-        # camera shape definition
-        v,f,sc = getCameraShape();
-
-        R(x) = RC.quaternionToRotationMatrix(x[4:end]);
-        p(x) = x[1:3];
-
-        cameraScale = scale*minimum(ax.finallimits[].widths)/100; # by default, camera is ~8% w.r.t. the smallest axis width
-        
         for i = 1:N
             show_initial_cameras && GLM.poly!(ax,transpose((R(initShapes[i])*transpose(v).*(cameraScale*0.75)).+p(initShapes[i])), f, strokewidth = 2.5, color = init_colors[i], strokecolor = sc);
             GLM.poly!(ax,transpose((R(endShapes[i])*transpose(v).*cameraScale).+p(endShapes[i])), f, strokewidth = 2.5, color = final_colors[i], strokecolor = sc);
@@ -243,6 +243,8 @@ function plotImageTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spatia
     General setup (definition of colors and theme, figures creation, etc.)
 
     =======#
+    
+    ax.yreversed = true; # enforces that the camera image matches the "true" camera PoV
 
     if !isa(lines_order,Nothing) && (show_frame || show_initial_frame)
         @warn "Having both the wire-frame and the interconnecting lines might lead to a cluttered screen; the wire-frame is therefore disabled.";
@@ -338,8 +340,8 @@ end
 
 #
 function showTrajectoryVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, P::AbstractMatrix = [0 0]; 
-    axes_limits::Vector{T} where T<:Real = [0], colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, 
-    desired_pose::Vector{T} where T <: Real = [0], filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
+    axes_limits::Vector{T} where T<:Real = [0], azimuth = nothing, colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, 
+    desired_pose::Vector{T} where T <: Real = [0], elevation = nothing, filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
     live_video::Bool = false, point_size::Integer = 20, scale::Real=4, screen_limits::Vector{T} where T<:Real = [0], show_frame_in_3D::Bool = false, show_frame_in_screen::Bool = false, 
     show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, show_screen::Bool = false, theme::String = "", title::String = "", video_duration::Real = 30, 
     video_resolution::Tuple{Int64, Int64} = (1440,1080))
@@ -378,15 +380,18 @@ function showTrajectoryVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vec
     pcolor = themeInitialization(theme);
 
     # figure and axes creation
-    fig = GLM.Figure(resolution = video_resolution);
+    fig = GLM.Figure(size = video_resolution);
 
     if show_screen
         ax = GLM.Axis3(fig[1,1], title = "3D view", aspect = :data);
-        ax_screen = GLM.Axis(fig[1,0], title = "Camera view", aspect = GLM.DataAspect());
+        ax_screen = GLM.Axis(fig[1,0], title = "Camera view", aspect = GLM.DataAspect(), yreversed = true);
         GLM.Label(fig[0,0:1], ( title == "" ? GLM.@lift("t = $(round($time, digits = 1)) s") : title), font=:bold, fontsize=20);
     else
         ax = GLM.Axis3(fig[1,1], title = ( title == "" ? GLM.@lift("t = $(round($time, digits = 1)) s") : title), aspect = :data);
     end
+
+    !isa(azimuth,Nothing) && (ax.azimuth = azimuth);
+    !isa(elevation,Nothing) && (ax.elevation = elevation);
 
     #=======
 
@@ -511,7 +516,7 @@ function showTrajectoryVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vec
     # filename
     filename = isa(filename,Nothing) ? "videos/spatial_"*Dates.format(Dates.now(), "yyyymmdd-HH:MM")*".mp4" : "videos/"*filename*".mp4";
     mkpath(dirname(filename));
-
+    
     # cameras and tracks "objects", comments below are "element-wise"
     cameras = Vector{GLM.Observable}(undef,n); # matrix, depending on time; each column is a vertex of the camera shape
     tracks = Vector{GLM.Observable}(undef,n); # list of 3D points, a point is added after each time-step; each point is the camera's position at a given time instant
@@ -601,16 +606,16 @@ function showTrajectoryVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vec
     
 end
 
-function plotCameras(oxcs; P::AbstractMatrix = [0 0],scale=4,cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0),theme="")
+function plotCameras(oxcs; P::AbstractMatrix = [0 0], scale=4, points_size = 15, cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0),theme="",barycenter = "back")
     fig = GLM.Figure();
     ax = GLM.Axis3(fig[1,1], title = "", aspect = :data); # creates figure and axes
 
-    plotCameras!(ax,oxcs,P=P,scale=scale,cls=cls,theme=theme);
+    plotCameras!(ax,oxcs,P=P,scale=scale,points_size=points_size,cls=cls,theme=theme,barycenter = barycenter);
 
     return fig;
 end 
 
-function plotCameras!(ax, oxcs; P::AbstractMatrix = [0 0],scale=4,cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0),theme="",resize_axes = true)
+function plotCameras!(ax, oxcs; P::AbstractMatrix = [0 0],scale=4, points_size = 15, cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0),theme="",resize_axes = true,barycenter = "back")
     if isa(cls,Vector) && length(cls) != length(oxcs)
         @warn "Dimension mismatch; only the first color will be used.";
         cls = cls[1];
@@ -626,7 +631,7 @@ function plotCameras!(ax, oxcs; P::AbstractMatrix = [0 0],scale=4,cls=GLM.RGBA{F
     coordinates = (P != [0 0]) ? [[x[j] for x in [oxcs...,[P[:,i] for i in axes(P,2)]...]] for j in 1:3] : [[x[j] for x in oxcs] for j in 1:3];
     s = scale*(1+maximum(map(largestDistance, coordinates)))/100; # by default, camera is ~4% w.r.t. the smallest axis width
     
-    v,f,sc = getCameraShape();
+    v,f,sc = getCameraShape(barycenter);
 
     R(x) = RC.quaternionToRotationMatrix(x[4:end]);
     p(x) = x[1:3];
@@ -644,11 +649,12 @@ function plotCameras!(ax, oxcs; P::AbstractMatrix = [0 0],scale=4,cls=GLM.RGBA{F
     end
 
     if P != [0 0]
-        GLM.scatter!(ax,P[1,:], P[2,:], P[3,:], markersize=15,color=pcolor); # plots tracking points
+        GLM.scatter!(ax,P[1,:], P[2,:], P[3,:], markersize=points_size,color=pcolor); # plots tracking points
     end
 
     if resize_axes
         # what follows is a hack to give the plot a "cubic" shape
+        GLM.reset_limits!(ax); # updates axes limits to fit the content of ax
         L = argmax(ax.finallimits[].widths);
         M = ax.finallimits[].widths[L]/2;
 
@@ -680,6 +686,8 @@ function plotScreen!(ax, oxcs::Vector{T} where T<:AbstractVector, P::AbstractMat
     lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
     point_size::Real = 20, theme="")
 
+    ax.yreversed = true; # enforces that the camera image matches the "true" camera PoV
+
     n = length(oxcs);
     show_lines = !isa(lines_order, Nothing);
 
@@ -700,10 +708,13 @@ function plotScreen!(ax, oxcs::Vector{T} where T<:AbstractVector, P::AbstractMat
     end
 end
 
-function getCameraShape()
+function getCameraShape(barycenter = "back")
     vr = 0.5;
     #v = [-vr vr 1.;vr vr 1.;vr -vr 1.;-vr -vr 1.;0. 0. -1.]; # "slimmer" camera
-    v = [-vr vr 0.;vr vr 0.;vr -vr 0.;-vr -vr 0.;0. 0. -2.]; # "pushed back", "slimmer" camera
+    v_back = [-vr vr 0.;vr vr 0.;vr -vr 0.;-vr -vr 0.;0. 0. -2.]; # "pushed back", "slimmer" camera
+    v_front = [-vr vr 2.;vr vr 2.;vr -vr 2.;-vr -vr 2.;0. 0. 0.]; # "pushed forward", "slimmer" camera
+    v = (barycenter == "back") ? v_back : v_front;
+
     f = [1 2 3;3 4 1;1 5 2;2 5 3;3 5 4;4 5 1]; # order of vertices to plot the camera
 
     # black magic to not plot a black line across the camera screen
@@ -761,6 +772,8 @@ function styleInitialization(style, n)
     else
         @error "Other style-types are not supported yet, you lazy bum."
     end
+
+    return style;
 end
 
 function themeInitialization(theme)
@@ -780,9 +793,9 @@ end
 
 function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, axes_layout, P::AbstractMatrix = [0 0]; 
     column_widths = nothing, desired_pose::Vector{T} where T <: Real = [0], filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., 
-    framerate::Integer = 30, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
-    live_video::Bool = false, show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, theme::String = "", title::String = "", video_duration::Real = 30, 
-    video_resolution::Tuple{Int64, Int64} = (1440,1080))
+    framerate::Integer = 30, interpolation_factor::Integer = 1, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
+    live_video::Bool = false, logarithmic_time::Bool = false, row_widths = nothing, show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, 
+    theme::String = "", title::Union{String,GLM.Makie.LaTeXStrings.LaTeXString} = "", video_duration::Real = 30, video_resolution::Tuple{Int64, Int64} = (1440,1080))
 
     #=======
 
@@ -792,9 +805,10 @@ function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vecto
 
     camera_axes_number = sum(1 for al in axes_layout if al.type == "camera");
     image_axes_number = length(axes_layout) - camera_axes_number;
+    has_P = (P != [0 0] || all(haskey(al,:P) for al in axes_layout if al.type == "image"));
 
     # unconsistency checks
-    (image_axes_number != 0 && P == [0 0]) && (@error "P matrix is needed to show the points on the screen.");
+    (image_axes_number != 0 && !has_P) && (@error "P matrix is needed to show the points on the screen.");
 
     time = GLM.Observable(Float64(initial_time));
     n = length(traj);
@@ -810,37 +824,46 @@ function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vecto
     intTrs = map(i->TrajectoryInterpolator(traj[i].u,traj[i].t),1:n);
     
     tmax = (final_time == 0) ? maximum([traj[i].t[end] for i in eachindex(traj)]) : final_time;
-   
-    timestamps = range(time[], tmax, length = framerate*video_duration);
 
-    points_order = !isa(lines_order,Nothing) ? map(i->findfirst(e->e==i,lines_order),1:size(P,2)) : [1:size(P,2)...]; # "re-order" points order from show_lines; used to properly define points' tracks in the screen (below)
+    timestamps = logarithmic_time ? 
+        map(x -> (x^2)*(tmax-time[]) + time[], range(0, 1, length = framerate*video_duration)) :
+        range(time[], tmax, length = framerate*video_duration);
 
     cameras_list = Vector{Vector{GLM.Observable}}(undef,camera_axes_number);
     tracks_list  = Vector{Vector{GLM.Observable}}(undef,camera_axes_number);
     features_list = Vector{Vector{GLM.Observable}}(undef,image_axes_number);
     features_tracks_list = Vector{Vector{Vector{GLM.Observable}}}(undef,image_axes_number);
+    P_sizes = Vector{Int}(undef, image_axes_number);
+    points_order = Vector{Vector{Int}}(undef, image_axes_number);
+    tracks_numbers = Vector{Vector{Int}}(undef, camera_axes_number);
+    features_tracks_numbers = Vector{Vector{Int}}(undef, image_axes_number);
     kc = 1;
     ki = 1;
 
-    if any(haskey(al.settings, :lines_order) for al in axes_layout)
-        general_settings = Dict(:desired_pose => desired_pose);
-    else
-        general_settings = Dict(:desired_pose => desired_pose, :lines_order => lines_order);
-    end
+    general_settings = Dict{Symbol,Any}();
+    all(!haskey(al.settings, :lines_order) for al in axes_layout) && (general_settings[:lines_order] = lines_order);
+    all(!haskey(al.settings, :desired_pose) for al in axes_layout) && (general_settings[:desired_pose] = desired_pose);
 
     for (i,al) in enumerate(axes_layout)
         println("Elaborating video $i...")
+        local_P = haskey(al,:P) ? al.P : P;
+
         if al.type == "camera"
             # create axes and get observables
-            axes[i] = GLM.Axis3(fig[al.axes_position...],aspect = :data);
-            cameras_list[kc],tracks_list[kc] = initializeCameraVideo!(axes[i], time, view(intTrs,al.list), P, timestamps,
+            # NOTA BENE: in 3D, it's required to initialize title at creation, it is a known bug in GLMakie!
+            axes[i] = haskey(al.settings,:title) ? GLM.Axis3(fig[al.axes_position...],aspect = :data, title = al.settings[:title]) : GLM.Axis3(fig[al.axes_position...],aspect = :data);
+            tracks_numbers[kc] = al.list;
+            cameras_list[kc],tracks_list[kc] = initializeCameraVideo!(axes[i], time, view(intTrs,al.list), local_P, timestamps,
             points_color = pcolor; al.settings..., general_settings...);
             kc += 1;
         else
             # create axes and get observables
-            axes[i] = GLM.Axis(fig[al.axes_position...], aspect = GLM.DataAspect());
-            features_list[ki],features_tracks_list[ki] = initializeImageVideo!(axes[i], time, view(intTrs,al.list), P, timestamps;
+            axes[i] = GLM.Axis(fig[al.axes_position...], aspect = GLM.DataAspect(), yreversed = true);
+            features_list[ki],features_tracks_list[ki] = initializeImageVideo!(axes[i], time, view(intTrs,al.list), local_P, timestamps;
             al.settings..., general_settings...);
+            GLM.hidedecorations!(axes[i]);
+            P_sizes[ki] = size(local_P,2);
+            points_order[ki] = !isa(lines_order,Nothing) ? map(i->findfirst(e->e==i,lines_order),1:P_sizes[ki]) : [1:P_sizes[ki]...]; # "re-order" points order from show_lines; used to properly define points' tracks in the screen (below)
             ki += 1;
         end
     end
@@ -853,7 +876,15 @@ function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vecto
 
     =======#
 
-    GLM.Label(fig[0,1:end], ( title == "" ? GLM.@lift("t = $(round($time, digits = 1)) s") : title), font=:bold, fontsize=20);
+    obs_title = GLM.lift(time) do t
+        if title == ""
+            return "t = $(round(t, digits = 1)) s";
+        else
+            return GLM.L"%$title - time: $%$(round(t, digits = 1))\,\mathrm{s}$";
+        end
+    end
+
+    GLM.Label(fig[0,1:end], obs_title, font=:bold, fontsize=20);
     
     if !isa(column_widths,Nothing)
         for i in eachindex(column_widths)
@@ -861,10 +892,15 @@ function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vecto
         end
     end
 
+    if !isa(row_widths,Nothing)
+        for i in eachindex(row_widths)
+            GLM.rowsize!(fig.layout,i,GLM.Relative(row_widths[i]));
+        end
+    end
+
     # filename
     filename = isa(filename,Nothing) ? "videos/spatial_"*Dates.format(Dates.now(), "yyyymmdd-HH:MM")*".mp4" : "videos/"*filename*".mp4";
     mkpath(dirname(filename));
-
     
     #=======
 
@@ -896,8 +932,8 @@ function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vecto
             if show_tracks_in_screen
                 for (il,screen_tracks) in enumerate(features_tracks_list)
                     for it in eachindex(screen_tracks)
-                        for j = 1:size(P,2)
-                            push!(screen_tracks[it][j][], features_list[il][it][][points_order[j]]);
+                        for j = 1:P_sizes[il]
+                            push!(screen_tracks[it][j][], features_list[il][it][][points_order[il][j]]);
                             notify(screen_tracks[it][j]);
                         end
                     end
@@ -909,23 +945,24 @@ function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vecto
         # video creation
         GLM.record(fig, filename, timestamps;
                 framerate = framerate) do t
-                    
-            time[] = t;
+            
+            finer_time = range(time[],t,interpolation_factor+1)[2:end];
+            
             if show_tracks_in_3D
                 for (il,tracks) in enumerate(tracks_list)
                     for it in eachindex(tracks)
-                        four_vertices = cameras_list[il][it][][1:4,:];
-                        new_point = sum(map(i->four_vertices[i,:],1:4))/4;
-                        push!(tracks[it][], GLM.Point3f( new_point ));
+                        new_points = [GLM.Point3f((intTrs[tracks_numbers[il][it]])(tf)) for tf in finer_time];
+                        append!(tracks[it][], new_points);
                         notify(tracks[it]);
                     end
                 end
             end
+            time[] = t;
             if show_tracks_in_screen
                 for (il,screen_tracks) in enumerate(features_tracks_list)
                     for it in eachindex(screen_tracks)
-                        for j = 1:size(P,2)
-                            push!(screen_tracks[it][j][], features_list[il][it][][points_order[j]]);
+                        for j = 1:P_sizes[il]
+                            push!(screen_tracks[it][j][], features_list[il][it][][points_order[il][j]]);
                             notify(screen_tracks[it][j]);
                         end
                     end
@@ -1050,7 +1087,8 @@ end
 function initializeImageVideo!(ax_screen, time, intTrs, P::AbstractMatrix, timestamps;
     colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, 
     desired_pose::Vector{T} where T <: Real = [0], lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
-    point_size::Integer = 20, screen_limits::Vector{T} where T<:Real = [0], style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid)
+    point_size::Integer = 20, screen_limits::Vector{T} where T<:Real = [0], style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid, 
+    title::Union{Nothing,String,GLM.Makie.LaTeXStrings.LaTeXString} = nothing)
 
     #=======
 
@@ -1067,7 +1105,8 @@ function initializeImageVideo!(ax_screen, time, intTrs, P::AbstractMatrix, times
 
     n = length(intTrs);
     
-    # colors and styles initialization
+    # title, colors and styles initialization
+    !isa(title,Nothing) && (ax_screen.title = title);
     colors = colorsInitialization(colors, n, color_gradient);
     style = styleInitialization(style,n);
 
