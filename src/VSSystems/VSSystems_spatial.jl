@@ -1,26 +1,12 @@
 function spatial(dx, x, p, t)
-    λ = (length(p) == 4 && isa(p[4],Real)) ? p[4] : 1;
-    P = p[1];
-    sd = p[2];
-    controller = p[3];
+    
+    v_c = p.controller(var"#self#",x,p);
 
-    pᵣ = x[1:3]; # robot's position in world frame
-    qᵣ = x[4:end]; # quaternion representing the robot's orientation as o^q_c (camera to world)
-
-    N = size(P,2);
-    L = zeros(eltype(x),2*N,6);
-
-    oRc = RC.quaternionToRotationMatrix(qᵣ);
-    Pc = transpose(oRc)*(P.-pᵣ);
-
-    s = [transpose(Pc[1,:]./Pc[3,:]); transpose(Pc[2,:]./Pc[3,:])];
-
-    for i = 1:N
-        L[2*i-1:2*i,:] = [-1/Pc[3,i] 0 s[1,i]/Pc[3,i] s[1,i]*s[2,i] -(1+s[1,i]^2) s[2,i];
-                          0 -1/Pc[3,i] s[2,i]/Pc[3,i] 1+s[2,i]^2 -s[1,i]*s[2,i] -s[1,i]];
+    if haskey(p,:saturation) && LinearAlgebra.norm(v_c) > p.saturation
+        v_c = (p.saturation * v_c)/LinearAlgebra.norm(v_c);
     end
 
-    v_c = controller(λ,L,s,sd);
+    oRc = RC.quaternionToRotationMatrix(x[4:end]);
 
     dx[1:3] = oRc*v_c[1:3];
     Ω(ω) = [0 -ω[1] -ω[2] -ω[3];
@@ -30,15 +16,27 @@ function spatial(dx, x, p, t)
 
     #W(q) = [-q[2] -q[3] -q[4]; q[1] -q[4] -q[3]; q[4] q[1] -q[2]; -q[3] q[2] q[1]];
 
-    dx[4:7] = 0.5*Ω(v_c[4:end])*qᵣ;
+    dx[4:7] = 0.5*Ω(v_c[4:end])*x[4:end];
     
     return nothing
 end
 
+function cartesianCoordinatesInteractionMatrix(::typeof(spatial),s,Z)
+    N = length(Z);
+    L = zeros(eltype(s),2*N,6);
+
+    for i = 1:N
+        L[2*i-1:2*i,:] = [-1/Z[i] 0 s[1,i]/Z[i] s[1,i]*s[2,i] -(1+s[1,i]^2) s[2,i];
+                          0 -1/Z[i] s[2,i]/Z[i] 1+s[2,i]^2 -s[1,i]*s[2,i] -s[1,i]];
+    end
+
+    return L;
+end
+
 function getError(::Union{typeof(spatial),typeof(spatialdesiredpose)},x::AbstractVecOrMat,p,returnNorm::Bool = true)
     n = size(x,2);
-    P = p[1];
-    sd = p[2];
+    P = p.P;
+    sd = p.sd;
     N = size(P,2);
 
     R(qᵣ) = transpose(RC.quaternionToRotationMatrix(qᵣ)); #cRo
@@ -46,7 +44,7 @@ function getError(::Union{typeof(spatial),typeof(spatialdesiredpose)},x::Abstrac
     s(x,P) = (Pc = R(x[4:end])*(P.-x[1:3]); return [transpose(Pc[1,:]./Pc[3,:]); transpose(Pc[2,:]./Pc[3,:])]);
 
     if returnNorm
-        e = zeros(eltype(x),n,1);
+        e = zeros(eltype(x),n);
         for i = 1:n 
             e[i] = 0.5*sum((a - b)^2 for (a,b) in zip(s(x[:,i],P)[:],sd[:]));
         end
