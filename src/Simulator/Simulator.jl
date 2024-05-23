@@ -14,9 +14,30 @@ Simulate the visual servoing system defined by `f`.
 
 # Arguments
 - `f::Function`: system's vector field.
+- `x0::Vector{Vector{<:Real}}`: Vector of initial positions.
+- `p`: system's parameters, depend on the chosen vector field.
+- `t::Real`: simulation time.
+- `solver=DE.TRBDF2`: ODE solver. Can be choosen from: https://diffeq.sciml.ai/stable/solvers/ode_solve/
+- `quiet::Bool=false`: option to suppress output.
+"""
+function simulate(f::Function, x0::Vector{Vector{T}} where T<:Real, p, t::Real; solver=DE.TRBDF2, quiet::Bool=false, 
+    step_size::Union{Real,Nothing} = nothing, terminal_distance::Function = VS.squaredDistance, 
+    terminal_state::Union{Vector{T} where T<:Real, Vector{Vector{T}} where T<:Real, Nothing} = nothing, terminal_threshold::Real = 1e-6)
+
+    M0 = reduce(hcat,x0);
+
+    return simulate(f,M0,p,t,solver=solver,quiet=quiet,step_size=step_size,terminal_distance=terminal_distance,terminal_state=terminal_state,terminal_threshold=terminal_threshold);
+end
+
+"""
+    simulate(f, x0, p, t; controller=VS.transposeController, solver=TRBDF2, quiet=false)
+
+Simulate the visual servoing system defined by `f`.
+
+# Arguments
+- `f::Function`: system's vector field.
 - `x0::AbstractArray{<:Real}`: (n x s) matrix, where n is the system's dimension. Each column is a different initial position.
 - `p::Vector{Any}`: system's parameters, depend on the chosen vector field.
-- `sd::AbstractArray{<:Real}`: (f x N) matrix, where f is the features' dimension. Each column is a tracking point's wanted feature.
 - `t::Real`: simulation time.
 - `solver=DE.TRBDF2`: ODE solver. Can be choosen from: https://diffeq.sciml.ai/stable/solvers/ode_solve/
 - `quiet::Bool=false`: option to suppress output.
