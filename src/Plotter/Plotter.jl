@@ -2,17 +2,20 @@ module Plotter
 
     import Plots
     import GLMakie as GLM
+    import LinearAlgebra as LA
     import Dates
 
     import ..Desiderata as Des
     import ..RotationConversions as RC
     import ..VSSystems as VS
     import ..Utilities as Uti
+    include("Plotter_geometricalobjects.jl")
     include("Plotter_planar.jl")
     include("Plotter_circular.jl")
     include("Plotter_spatial.jl")
     
-    export animateTrajectories,plotCameraTrajectories,plotCameraTrajectories!,plotCameras,plotCameras!,plotImageTrajectories,plotImageTrajectories!,plotScreen,plotScreen!,showLayedOutVideo,showTrajectoryVideo
+    export animateTrajectories,plotCameraTrajectories,plotCameraTrajectories!,plotCameras,plotCameras!,plotImageTrajectories,plotImageTrajectories!,plotScreen,plotScreen!,showLayedOutVideo,showTrajectoryVideo,
+           Cylinder,Points
 
     #=for n in names(@__MODULE__; all=true)
         if Base.isidentifier(n) && n ∉ (Symbol(@__MODULE__), :eval, :include)

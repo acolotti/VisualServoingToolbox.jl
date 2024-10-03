@@ -1,4 +1,5 @@
 """
+    [DEPRECATED]
     function plotCameraTrajectories(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, P::AbstractMatrix = [0 0]; axes_limits::Vector{T} where T<:Real = [0], colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0], final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2, point_size::Real = 20, scale::Real = 8, show_cameras::Bool = true, show_initial_cameras::Bool = true, style::Union{Symbol,Vector{T}} where T<:Real = :solid, theme::String = "", trajectories_limits::Vector{T} where T<:Real = [0])
 
     Plot the 3D trajectories represented by `traj`.
@@ -24,12 +25,14 @@
     - `theme::String`: set plots theme, by default it's the GLMakie one. Other options are: "presentation" (for theme_ggplot2), "dark" (for theme_black)
     - `trajectories_limits::Vector{T} where T<:Real`: 6-dimensional array defining a box, the trajectories will be plotted only within the box. Order is [x_min, x_max, y_min, y_max, z_min, z_max]. Independent from axes_limits!
 """
-function plotCameraTrajectories(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, P::AbstractMatrix = [0 0]; 
+function plotCameraTrajectories(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, P::AbstractMatrix; 
     axes_limits::Vector{T} where T<:Real = [0], colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, 
     desired_pose::Vector{T} where T <: Real = [0], final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, 
     init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, 
     lines_thickness::Real = 2, point_size::Real = 20, scale::Real = 8, show_cameras::Bool = true, show_initial_cameras::Bool = true, style::Union{Symbol,Vector{T}} where T<:Real = :solid, 
     theme::String = "", trajectories_limits::Vector{T} where T<:Real = [0])
+
+    @warn "The passage of an explicit matrix of points P has been deprecated. A GeometricalObject should be provided instead."
 
     fig = GLM.Figure();
     ax = GLM.Axis3(fig[1,1], title = "", aspect = :data); # creates figure and axes
@@ -38,32 +41,33 @@ function plotCameraTrajectories(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},
         GLM.limits!(ax,axes_limits...); # N.B. settings the limits manually prevents any subsequent, automatic change of limits performed by scatter, lines, etc.
     end
 
-    plotCameraTrajectories!(ax,traj,P,
-    color_gradient=color_gradient,colors=colors,desired_pose=desired_pose,final_colors=final_colors,init_colors=init_colors,lines_order=lines_order,lines_thickness=lines_thickness,
-    point_size=point_size,scale=scale,show_cameras=show_cameras,show_initial_cameras=show_initial_cameras,style=style,theme=theme,trajectories_limits=trajectories_limits);
+    O = Points(P);
+    object_parameters = (lines_thickness = lines_thickness,lines_order = lines_order, point_size = point_size);
+
+    plotCameraTrajectories!(ax,traj,O,
+    color_gradient=color_gradient,colors=colors,desired_pose=desired_pose,final_colors=final_colors,init_colors=init_colors,object_parameters = object_parameters,
+    scale=scale,show_cameras=show_cameras,show_initial_cameras=show_initial_cameras,style=style,theme=theme,trajectories_limits=trajectories_limits);
 
     return fig;
 end
 
 """
-    function plotCameraTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, P::AbstractMatrix = [0 0]; colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0], final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2, point_size::Real = 20, scale::Real = 8, show_cameras::Bool = true, show_initial_cameras::Bool = true, style::Union{Symbol,Vector{T}} where T<:Real = :solid, theme::String = "", trajectories_limits::Vector{T} where T<:Real = [0])
+    function plotCameraTrajectories(traj::Vector{VS.VSTrajectory{VS.spatial}}, O::Union{Nothing,GeometricalObject} = nothing; axes_limits::Vector{T} where T<:Real = [0], colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0], final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, object_parameters::NamedTuple = NamedTuple(), scale::Real = 8, show_cameras::Bool = true, show_initial_cameras::Bool = true, style::Union{Symbol,Vector{T}} where T<:Real = :solid, theme::String = "", trajectories_limits::Vector{T} where T<:Real = [0])
 
-    Plot the 3D trajectories represented by `traj` on a given axis `ax`.
+    Plot the 3D trajectories represented by `traj`.
 
     # Arguments
-    - `ax`: GLMakie.Axis3 where the figure is drawn.
-    - `traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}`: trajectories to be plotted.
-    - `P::AbstractMatrix`: matrix of tracking points (optional).
+    - `traj::Vector{VS.VSTrajectory{VS.spatial}}`: trajectories to be plotted.
+    - `O::GeometricalObject`: tracked 3D object (optional).
 
     # Keyword arguments
+    - `axes_limits::Vector{T} where T<:Real`: 6-dimensional array to set the axes limits. Order is [x_min, x_max, y_min, y_max, z_min, z_max].
     - `colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol}`: trajectories' colors, can be either one color or a vector of colors. Default colors are the so-called Wong colors (colorblind-friendly)
-    - `color_gradient::Bool`: changes the default colors to a gradient of colors
+    - `color_gradient::Bool`: changes the default colors to a gradient of colors.
     - `desired_pose::Vector{T} where T<:Real`: add the desired pose to the plot (as a green dotted camera).
     - `final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol}`: final cameras' colors (same rules as `colors`).
     - `init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol}`: initial cameras' colors (same rules as `colors`, only if `show_initial_cameras` is active).
-    - `lines_order::Union{Nothing,Vector{T} where T<:Integer}`: changes the shape of the tracking points, from points to a 3D figure: it is a vector that defines in which order to write the lines. Example: the P matrix defines a square, lines_order might be [1,2,3,4,1], meaning that we draw lines connecting the first point to the second, the second to the third, etc., connecting back to the first one in the end to create a square.
-    - `lines_thickness::Real`: thickness of the lines defined with lines_order
-    - `point_size::Real`: tracking points size
+    - `object_parameters::NamedTuple` : 3D object plotting parameters.
     - `scale::Real`: scale of the cameras, as a percentage of the smallest axis' width. Example: scale = 8 means that the cameras will be around 8% of the smallest axis.
     - `show_cameras::Bool`: determines whether any camera is shown in the figure. 
     - `show_initial_cameras::Bool`: determines if the initial camera poses are shown (only if show_cameras is equal to true).
@@ -71,16 +75,60 @@ end
     - `theme::String`: set plots theme, by default it's the GLMakie one. Other options are: "presentation" (for theme_ggplot2), "dark" (for theme_black)
     - `trajectories_limits::Vector{T} where T<:Real`: 6-dimensional array defining a box, the trajectories will be plotted only within the box. Order is [x_min, x_max, y_min, y_max, z_min, z_max]. Independent from axes_limits!
 """
-function plotCameraTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, P::AbstractMatrix = [0 0]; 
+function plotCameraTrajectories(traj::Vector{VS.VSTrajectory{VS.spatial}}, O::Union{Nothing,GeometricalObject} = nothing; 
+    axes_limits::Vector{T} where T<:Real = [0], colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, 
+    desired_pose::Vector{T} where T <: Real = [0], final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, 
+    init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, object_parameters::NamedTuple = NamedTuple(), scale::Real = 8,
+    show_cameras::Bool = true, show_initial_cameras::Bool = true, style::Union{Symbol,Vector{T}} where T<:Real = :solid, theme::String = "",
+    trajectories_limits::Vector{T} where T<:Real = [0])
+
+    fig = GLM.Figure();
+    ax = GLM.Axis3(fig[1,1], title = "", aspect = :data); # creates figure and axes
+
+    if axes_limits != [0]
+        GLM.limits!(ax,axes_limits...); # N.B. settings the limits manually prevents any subsequent, automatic change of limits performed by scatter, lines, etc.
+    end
+
+    plotCameraTrajectories!(ax,traj,O,
+    color_gradient=color_gradient,colors=colors,desired_pose=desired_pose,final_colors=final_colors,init_colors=init_colors,object_parameters = object_parameters,
+    scale=scale,show_cameras=show_cameras,show_initial_cameras=show_initial_cameras,style=style,theme=theme,trajectories_limits=trajectories_limits);
+
+    return fig;
+end
+
+
+"""
+    function plotCameraTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, O::Union{Nothing,GeometricalObject} = nothing; colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0], final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, object_parameters::NamedTuple = NamedTuple(), scale::Real = 8, show_cameras::Bool = true, show_initial_cameras::Bool = true, style::Union{Symbol,Vector{T}} where T<:Real = :solid, theme::String = "", trajectories_limits::Vector{T} where T<:Real = [0])    
+
+    Plot the 3D trajectories represented by `traj` on a given axis `ax`.
+
+    # Arguments
+    - `ax`: GLMakie.Axis3 where the figure is drawn.
+    - `traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}`: trajectories to be plotted.
+    - `O::GeometricalObject`: tracked 3D object (optional).
+
+    # Keyword arguments
+    - `colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol}`: trajectories' colors, can be either one color or a vector of colors. Default colors are the so-called Wong colors (colorblind-friendly)
+    - `color_gradient::Bool`: changes the default colors to a gradient of colors
+    - `desired_pose::Vector{T} where T<:Real`: add the desired pose to the plot (as a green dotted camera).
+    - `final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol}`: final cameras' colors (same rules as `colors`).
+    - `init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol}`: initial cameras' colors (same rules as `colors`, only if `show_initial_cameras` is active).
+    - `object_parameters::NamedTuple` : 3D object plotting parameters.
+    - `scale::Real`: scale of the cameras, as a percentage of the smallest axis' width. Example: scale = 8 means that the cameras will be around 8% of the smallest axis.
+    - `show_cameras::Bool`: determines whether any camera is shown in the figure. 
+    - `show_initial_cameras::Bool`: determines if the initial camera poses are shown (only if show_cameras is equal to true).
+    - `style::Union{Symbol,Vector{T}} where T<:Real`: determines the linestyle of the trajectories, possible options are: :solid for solid lines, :dash for dashed ones, :dot for dotted one, etc.
+    - `theme::String`: set plots theme, by default it's the GLMakie one. Other options are: "presentation" (for theme_ggplot2), "dark" (for theme_black)
+    - `trajectories_limits::Vector{T} where T<:Real`: 6-dimensional array defining a box, the trajectories will be plotted only within the box. Order is [x_min, x_max, y_min, y_max, z_min, z_max]. Independent from axes_limits!
+"""
+function plotCameraTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, O::Union{Nothing,GeometricalObject} = nothing; 
     colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0],
     final_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, init_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing,
-    lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2, point_size::Real = 20, scale::Real = 8, show_cameras::Bool = true, 
-    show_initial_cameras::Bool = true, style::Union{Symbol,Vector{T}} where T<:Real = :solid, theme::String = "", trajectories_limits::Vector{T} where T<:Real = [0])
+    object_parameters::NamedTuple = NamedTuple(), scale::Real = 8, show_cameras::Bool = true, show_initial_cameras::Bool = true, style::Union{Symbol,Vector{T}} where T<:Real = :solid,
+    theme::String = "", trajectories_limits::Vector{T} where T<:Real = [0])
 
     inLimits(u) = trajectories_limits[1] <= u[1] <= trajectories_limits[2] && trajectories_limits[3] <= u[2] <= trajectories_limits[4] && trajectories_limits[5] <= u[3] <= trajectories_limits[6];
     
-    show_lines = !isa(lines_order,Nothing);
-
     N = length(traj);
     initShapes = Vector{Vector{Float64}}(undef,N);
     endShapes = Vector{Vector{Float64}}(undef,N);
@@ -92,6 +140,7 @@ function plotCameraTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spati
 
     # initialize theme and get points color
     pcolor = themeInitialization(theme);
+    !haskey(object_parameters,:color) && (object_parameters = (object_parameters..., color = pcolor));
 
     for i = 1:N
         initShapes[i] = traj[i].u[1];
@@ -123,13 +172,8 @@ function plotCameraTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spati
         #GLM.scatter!(ax,pts,marker=:xcross,markersize=10,color=:black); # plots the points
     end
 
-    if P != [0 0]
-        if !show_lines
-            GLM.scatter!(ax,P[1,:], P[2,:], P[3,:], markersize=point_size,color=pcolor); # plots tracking points
-        else
-            GLM.lines!(ax, P[1,:][lines_order], P[2,:][lines_order], P[3,:][lines_order], color = pcolor, linewidth = lines_thickness);
-        end
-    end
+    # plot the 3D object, if provided
+    !isa(O, Nothing) && (plotObject!(ax,O,object_parameters));
 
     # camera shape definition
     v,f,sc = getCameraShape();
@@ -607,16 +651,34 @@ function showTrajectoryVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vec
     
 end
 
-function plotCameras(oxcs; P::AbstractMatrix = [0 0], scale=4, points_size = 15, cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0),theme="",barycenter = "back")
+function plotCameras(oxcs, P::AbstractMatrix; scale=4, points_size = 15, cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0),theme="",barycenter = "back")
+    @warn "The passage of an explicit matrix of points P has been deprecated. A GeometricalObject should be provided instead."
+
+    O = Points(P);
+    object_parameters = (points_size = points_size,);
+
+    return plotCameras(oxcs,O=O,cls=cls,object_parameters=object_parameters,scale=scale,theme=theme,barycenter=barycenter)
+end
+
+function plotCameras(oxcs; O::Union{GeometricalObject,Nothing} = nothing, cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0), object_parameters::NamedTuple = NamedTuple(), scale=4, theme="", barycenter = "back")
     fig = GLM.Figure();
     ax = GLM.Axis3(fig[1,1], title = "", aspect = :data); # creates figure and axes
 
-    plotCameras!(ax,oxcs,P=P,scale=scale,points_size=points_size,cls=cls,theme=theme,barycenter = barycenter);
+    plotCameras!(ax,oxcs,O=O,scale=scale,object_parameters=object_parameters,cls=cls,theme=theme,barycenter=barycenter);
 
     return fig;
-end 
+end
 
-function plotCameras!(ax, oxcs; P::AbstractMatrix = [0 0],scale=4, points_size = 15, cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0),theme="",resize_axes = true,barycenter = "back")
+function plotCameras!(ax, oxcs, P::AbstractMatrix; scale=4, points_size = 15, cls=GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0),theme="",resize_axes = true,barycenter = "back")
+    @warn "The passage of an explicit matrix of points P has been deprecated. A GeometricalObject should be provided instead."
+
+    O = Points(P);
+    object_parameters = (points_size = points_size,);
+
+    plotCameras!(ax,oxcs,O=O,cls=cls,object_parameters=object_parameters,scale=scale,theme=theme,resize_axes=resize_axes,barycenter=barycenter)
+end
+
+function plotCameras!(ax, oxcs; O::Union{GeometricalObject,Nothing} = nothing, barycenter = "back", cls = GLM.RGBA{Float32}(0.0f0,1.0f0,0.0f0,1.0f0), object_parameters::NamedTuple = NamedTuple(), scale = 4, resize_axes = true, theme = "")
     if isa(cls,Vector) && length(cls) != length(oxcs)
         @warn "Dimension mismatch; only the first color will be used.";
         cls = cls[1];
@@ -624,13 +686,14 @@ function plotCameras!(ax, oxcs; P::AbstractMatrix = [0 0],scale=4, points_size =
 
     # initialize theme and get points color
     pcolor = themeInitialization(theme);
+    !haskey(object_parameters,:color) && (object_parameters = (object_parameters..., color = pcolor));
 
     function largestDistance(v)
         return maximum(v) - minimum(v);
     end
     
-    coordinates = (P != [0 0]) ? [[x[j] for x in [oxcs...,[P[:,i] for i in axes(P,2)]...]] for j in 1:3] : [[x[j] for x in oxcs] for j in 1:3];
-    s = scale*(1+maximum(map(largestDistance, coordinates)))/100; # by default, camera is ~4% w.r.t. the smallest axis width
+    coordinates = isa(O,Points) ? [[x[j] for x in [oxcs...,[O[:,i] for i in axes(O,2)]...]] for j in 1:3] : [[x[j] for x in oxcs] for j in 1:3];
+    s = scale*(1+maximum(map(largestDistance, coordinates)))/100; # by default, camera is ~4% w.r.t. the largest axis width
     
     v,f,sc = getCameraShape(barycenter);
 
@@ -649,10 +712,6 @@ function plotCameras!(ax, oxcs; P::AbstractMatrix = [0 0],scale=4, points_size =
         end
     end
 
-    if P != [0 0]
-        GLM.scatter!(ax,P[1,:], P[2,:], P[3,:], markersize=points_size,color=pcolor); # plots tracking points
-    end
-
     if resize_axes
         # what follows is a hack to give the plot a "cubic" shape
         GLM.reset_limits!(ax); # updates axes limits to fit the content of ax
@@ -668,6 +727,9 @@ function plotCameras!(ax, oxcs; P::AbstractMatrix = [0 0],scale=4, points_size =
 
         GLM.limits!(ax,limits...);
     end
+
+    # plot the 3D object, if provided
+    !isa(O, Nothing) && (plotObject!(ax,O,object_parameters));
 end
 
 function plotScreen(oxcs::Vector{T} where T<:AbstractVector, P::AbstractMatrix; 
@@ -792,7 +854,26 @@ function themeInitialization(theme)
     return pcolor;
 end
 
-function showLayedOutVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vector{VS.VSTrajectory{VS.spatialdesiredpose}}}, axes_layout, P::AbstractMatrix = [0 0]; 
+"""
+    function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layout, P::AbstractMatrix = [0 0]; column_widths = nothing, desired_pose::Vector{T} where T <: Real = [0], filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., framerate::Integer = 30, interpolation_factor::Integer = 1, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2, live_video::Bool = false, logarithmic_time::Bool = false, row_widths = nothing, show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, theme::String = "", title::Union{String,GLM.Makie.LaTeXStrings.LaTeXString} = "", video_duration::Real = 30, video_resolution::Tuple{Int64, Int64} = (1440,1080))
+    
+    Creates a video with possibly several "views", as defined by `axes_layout`, both in state space and features space.
+
+    # Arguments
+    - `traj::Vector{VS.VSTrajectory{VS.spatial}}`: trajectories to be plotted.
+    - `axes_layout`: list of named tuples, describing each of the video's views. Each element must containt the following keys:
+      + `type` : determines if the view is in state space ("camera") or in features space ("image").
+      + `list` : determines the subset of trajectories shown in the view. Can be a vector of Integers or a Range (e.g., 1:3).
+      + `axes_position` : determines the view's position in the figure (e.g., (1:2, 2)).
+      + `settings` : a dictionary of settings specific for the view (see `initializeImageVideo!` and `initializeCameraVideo!`).
+      Example:
+        axes_layout = [
+        (type = "camera", list = 1:4, axes_position = (1:2,1),
+                settings = Dict(:color_gradient => true, :scale => 10)),
+        (type = "image", list = [1], axes_position = (1,2),
+                settings = Dict(:colors => :red, title => "Test title"))];
+"""
+function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layout, P::AbstractMatrix = [0 0]; 
     column_widths = nothing, desired_pose::Vector{T} where T <: Real = [0], filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., 
     framerate::Integer = 30, interpolation_factor::Integer = 1, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
     live_video::Bool = false, logarithmic_time::Bool = false, row_widths = nothing, show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, 
