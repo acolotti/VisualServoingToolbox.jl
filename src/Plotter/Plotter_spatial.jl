@@ -137,7 +137,9 @@ function plotCameraTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spati
     R(x) = RC.quaternionToRotationMatrix(x[4:end]);
     p(x) = x[1:3];
 
-    cameraScale = scale*minimum(ax.finallimits[].widths)/100; # by default, camera is ~8% w.r.t. the smallest axis width
+    GLM.reset_limits!(ax); # explicitly asks Makie to compute the axis limits based on the plot content
+
+    cameraScale = scale*maximum(ax.finallimits[].widths)/100; # by default, camera is ~8% w.r.t. the largest axis width
 
     if desired_pose != [0]
         GLM.poly!(ax, transpose((R(desired_pose)*transpose(v).*cameraScale).+p(desired_pose)), f, 
@@ -434,12 +436,11 @@ function showTrajectoryVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vec
         end
 
         if al
-            # TO BE FIXED: what happens if minimum(widths) == 0 ?
-            cameraScale = scale*minimum([limits[i+1]-limits[i] for i in [1,3,5]])/100;
+            cameraScale = scale*maximum([limits[i+1]-limits[i] for i in [1,3,5]])/100;
             limits += [-2*cameraScale,2*cameraScale,-2*cameraScale,2*cameraScale,-2*cameraScale,2*cameraScale]; # add a bit of padding around the plot
         else
             limits = copy(axes_limits);
-            cameraScale = scale*minimum([limits[i+1]-limits[i] for i in [1,3,5]])/(100+4*scale);
+            cameraScale = scale*maximum([limits[i+1]-limits[i] for i in [1,3,5]])/(100+4*scale);
         end
 
         if sl
@@ -452,7 +453,7 @@ function showTrajectoryVideo(traj::Union{Vector{VS.VSTrajectory{VS.spatial}},Vec
     else
         limits = copy(axes_limits);
         c_limits = copy(screen_limits);
-        cameraScale = scale*minimum([limits[i+1]-limits[i] for i in [1,3,5]])/(100+4*scale);
+        cameraScale = scale*maximum([limits[i+1]-limits[i] for i in [1,3,5]])/(100+4*scale);
     end
         
     GLM.limits!(ax,limits...);
@@ -1002,7 +1003,7 @@ function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps;
 
     =======#
 
-    # the following if manages the automatic resizing of the axes
+    # the following manages the automatic resizing of the axes
     if axes_limits == [0]
         limits = [Inf,-Inf,Inf,-Inf,Inf,-Inf];
 
@@ -1018,12 +1019,11 @@ function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps;
             tr(tr.t[end]+1); # reset trajectory's counter; TrajectoryInterpolator is made for sequential access, see Plotter.jl for implementation
         end
 
-        # TO BE FIXED: what happens if minimum(widths) == 0 ?
-        cameraScale = scale*minimum([limits[i+1]-limits[i] for i in [1,3,5]])/100;
+        cameraScale = scale*maximum([limits[i+1]-limits[i] for i in [1,3,5]])/100;
         limits += [-2*cameraScale,2*cameraScale,-2*cameraScale,2*cameraScale,-2*cameraScale,2*cameraScale]; # add a bit of padding around the plot
     else
         limits = copy(axes_limits);
-        cameraScale = scale*minimum([limits[i+1]-limits[i] for i in [1,3,5]])/(100+4*scale);
+        cameraScale = scale*maximum([limits[i+1]-limits[i] for i in [1,3,5]])/(100+4*scale);
     end
         
     GLM.limits!(ax,limits...);
