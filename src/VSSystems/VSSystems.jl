@@ -17,7 +17,7 @@ module VSSystems
     include("VSSystems_spatial.jl")
     include("VSSystems_controllers.jl")
 
-    export LevenbergMarquardtController, pseudoInverseController, transposeController, # controllers
+    export LevenbergMarquardtController, pseudoInverseController, transposeController, desiredPosePseudoInverseController, metaController, # controllers
         circular, planar, spatial, spatialdesiredpose, # systems
         getEquilibriumIndex, getError, getPotentialHessian, getReducedHessian, getTrajectoriesErrors, getVelocities, # utilities
         VSTrajectory # datastructures
