@@ -872,12 +872,31 @@ end
                 settings = Dict(:color_gradient => true, :scale => 10)),
         (type = "image", list = [1], axes_position = (1,2),
                 settings = Dict(:colors => :red, title => "Test title"))];
+        
+    # Keyword arguments
+    - `O::Union{GeometricalObject,Nothing}` : tracked 3D object.
+    - `column_widths` : vector of Floats, sets the width of each column (in percentage).
+    - `desired_pose::Vector{T} where T <: Real` : camera's desired pose, statically plotted if given.
+    - `filename::Union{String,Nothing}` : filename of video (if live_video = false).
+    - `final_time::Real` : final instant in simulation time.
+    - `initial_time::Real` : initial instant in simulation time.
+    - `framerate::Integer` : video framerate (if live_video = false).
+    - `interpolation_factor::Integer` : number of points plotted between two instants of time.
+    - `live_video::Bool` : discriminates between showing the video on screen or saving to file.
+    - `logarithmic_time::Bool` : time goes faster as it increases, rendering exponential convergence (almost) linear.
+    - `row_widths` : vector of Floats, sets the width of each row (in percentage).
+    - `show_tracks_in_3D::Bool` : flag to plot a persistent "tail" representing the cameras trajectories (in 3D).
+    - `show_tracks_in_screen::Bool` : flag to plot a persistent "tail" representing the points trajectories (in features space).
+    - `theme::String` : set plots theme, by default it's the GLMakie one. Other options are: "presentation" (for theme_ggplot2), "dark" (for theme_black)
+    - `title::Union{String,GLM.Makie.LaTeXStrings.LaTeXString}` : figure title.
+    - `video_duration::Real` : video duration in seconds.
+    - `video_resolution::Tuple{Int64, Int64}` : video resolution (e.g., (1920,1080)).
 """
-function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layout, P::AbstractMatrix = [0 0]; 
+function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layout; O::Union{GeometricalObject,Nothing} = nothing,
     column_widths = nothing, desired_pose::Vector{T} where T <: Real = [0], filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., 
-    framerate::Integer = 30, interpolation_factor::Integer = 1, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
+    framerate::Integer = 30, interpolation_factor::Integer = 1, object_parameters::NamedTuple = NamedTuple(),
     live_video::Bool = false, logarithmic_time::Bool = false, row_widths = nothing, show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, 
-    theme::String = "", title::Union{String,GLM.Makie.LaTeXStrings.LaTeXString} = "", video_duration::Real = 30, video_resolution::Tuple{Int64, Int64} = (1440,1080))
+    theme::String = "", title::Union{String,GLM.Makie.LaTeXStrings.LaTeXString} = "", video_duration::Real = 30, video_resolution::Tuple{Int64, Int64} = (1920,1080))
 
     #=======
 
@@ -887,7 +906,7 @@ function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layou
 
     camera_axes_number = sum(1 for al in axes_layout if al.type == "camera");
     image_axes_number = length(axes_layout) - camera_axes_number;
-    has_P = (P != [0 0] || all(haskey(al,:P) for al in axes_layout if al.type == "image"));
+    has_P = (isa(O,Points) || all((haskey(al,:O) && isa(al.O,Points)) for al in axes_layout if al.type == "image"));
 
     # unconsistency checks
     (image_axes_number != 0 && !has_P) && (@error "P matrix is needed to show the points on the screen.");
@@ -897,9 +916,10 @@ function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layou
     
     # initialize theme and get points color
     pcolor = themeInitialization(theme);
+    !haskey(object_parameters,:color) && (object_parameters = (object_parameters..., color = pcolor));
 
     # figure and axes creation
-    fig = GLM.Figure(resolution = video_resolution);
+    fig = GLM.Figure(size = video_resolution);
     axes = Vector{Any}(undef,length(axes_layout));
 
     # define interpolated trajectories
@@ -923,29 +943,28 @@ function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layou
     ki = 1;
 
     general_settings = Dict{Symbol,Any}();
-    all(!haskey(al.settings, :lines_order) for al in axes_layout) && (general_settings[:lines_order] = lines_order);
     all(!haskey(al.settings, :desired_pose) for al in axes_layout) && (general_settings[:desired_pose] = desired_pose);
 
     for (i,al) in enumerate(axes_layout)
         println("Elaborating video $i...")
-        local_P = haskey(al,:P) ? al.P : P;
+        local_O = haskey(al,:O) ? al.O : O;
 
         if al.type == "camera"
             # create axes and get observables
             # NOTA BENE: in 3D, it's required to initialize title at creation, it is a known bug in GLMakie!
             axes[i] = haskey(al.settings,:title) ? GLM.Axis3(fig[al.axes_position...],aspect = :data, title = al.settings[:title]) : GLM.Axis3(fig[al.axes_position...],aspect = :data);
             tracks_numbers[kc] = al.list;
-            cameras_list[kc],tracks_list[kc] = initializeCameraVideo!(axes[i], time, view(intTrs,al.list), local_P, timestamps,
-            points_color = pcolor; al.settings..., general_settings...);
+            cameras_list[kc],tracks_list[kc] = initializeCameraVideo!(axes[i], time, view(intTrs,al.list), timestamps, O = local_O,
+            object_parameters = object_parameters; al.settings..., general_settings...);
             kc += 1;
         else
             # create axes and get observables
             axes[i] = GLM.Axis(fig[al.axes_position...], aspect = GLM.DataAspect(), yreversed = true);
-            features_list[ki],features_tracks_list[ki] = initializeImageVideo!(axes[i], time, view(intTrs,al.list), local_P, timestamps;
-            al.settings..., general_settings...);
+            features_list[ki],features_tracks_list[ki] = initializeImageVideo!(axes[i], time, view(intTrs,al.list), timestamps, O = local_O,
+            object_parameters = object_parameters; al.settings..., general_settings...);
             GLM.hidedecorations!(axes[i]);
-            P_sizes[ki] = size(local_P,2);
-            points_order[ki] = !isa(lines_order,Nothing) ? map(i->findfirst(e->e==i,lines_order),1:P_sizes[ki]) : [1:P_sizes[ki]...]; # "re-order" points order from show_lines; used to properly define points' tracks in the screen (below)
+            P_sizes[ki] = size(local_O,2);
+            points_order[ki] = (haskey(object_parameters,:lines_order) && !isa(object_parameters.lines_order,Nothing)) ? map(i->findfirst(e->e==i,lines_order),1:P_sizes[ki]) : [1:P_sizes[ki]...]; # "re-order" points order from show_lines; used to properly define points' tracks in the screen (below)
             ki += 1;
         end
     end
@@ -1055,10 +1074,10 @@ function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layou
     
 end
 
-function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps; axes_limits::Vector{T} where T<:Real = [0], azimuth = nothing, colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing,
-    color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0], elevation = nothing, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
-    points_color::Union{GLM.Color,GLM.ColorAlpha,Symbol} = :black, point_size::Integer = 20, scale::Real=4, static_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, static_poses::Vector{Vector{T}} where T <: Real = [[0]],
-    style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid,
+function initializeCameraVideo!(ax, time, intTrs, timestamps; O::Union{GeometricalObject,Nothing} = nothing, axes_limits::Vector{T} where T<:Real = [0], azimuth = nothing,
+    colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0],
+    elevation = nothing, object_parameters::NamedTuple = NamedTuple(), scale::Real=4, static_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing,
+    static_poses::Vector{Vector{T}} where T <: Real = [[0]], style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid,
     title::Union{Nothing,String,GLM.Makie.LaTeXStrings.LaTeXString} = nothing)
 
     #=======
@@ -1067,8 +1086,6 @@ function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps;
 
     =======#
 
-    show_lines = !isa(lines_order,Nothing);
-    
     n = length(intTrs);
     
     # title, colors and styles initialization
@@ -1117,13 +1134,7 @@ function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps;
     
     =======#
 
-    if P != [0 0]
-        if !show_lines
-            GLM.scatter!(ax, P[1,:], P[2,:], P[3,:], markersize=point_size,color=points_color); # plots tracking points
-        else
-            GLM.lines!(ax, P[1,:][lines_order], P[2,:][lines_order], P[3,:][lines_order], color = points_color, linewidth = lines_thickness);
-        end
-    end
+    !isa(O, Nothing) && (plotObject!(ax,O,object_parameters));
 
     # camera shape definition
     v,f,sc = getCameraShape();
@@ -1165,17 +1176,21 @@ function initializeCameraVideo!(ax, time, intTrs, P::AbstractMatrix, timestamps;
     
 end
 
-function initializeImageVideo!(ax_screen, time, intTrs, P::AbstractMatrix, timestamps;
-    colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, 
-    desired_pose::Vector{T} where T <: Real = [0], lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2,
-    point_size::Integer = 20, screen_limits::Vector{T} where T<:Real = [0], style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid, 
-    title::Union{Nothing,String,GLM.Makie.LaTeXStrings.LaTeXString} = nothing)
+function initializeImageVideo!(ax_screen, time, intTrs, timestamps;
+    O::Points, colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, 
+    desired_pose::Vector{T} where T <: Real = [0], object_parameters::NamedTuple = NamedTuple(), screen_limits::Vector{T} where T<:Real = [0],
+    style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid, title::Union{Nothing,String,GLM.Makie.LaTeXStrings.LaTeXString} = nothing)
 
     #=======
 
     General setup (definition of colors and theme, figures creation, etc.)
 
     =======#
+
+    P = O.P;
+    lines_order = haskey(object_parameters,:lines_order) ? object_parameters.lines_order : nothing;
+    lines_thickness = haskey(object_parameters,:lines_thickness) ? object_parameters.lines_thickness : 2;
+    point_size = haskey(object_parameters,:point_size) ? object_parameters.point_size : 20;
 
     show_lines = !isa(lines_order,Nothing);
     points_order = show_lines ? map(i->findfirst(e->e==i,lines_order),1:size(P,2)) : [1:size(P,2)...]; # "re-order" points order from show_lines; used to properly define points' tracks in the screen (below)
