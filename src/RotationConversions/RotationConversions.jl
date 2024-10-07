@@ -9,9 +9,14 @@ function angleAxisToRotationMatrix(S::AbstractVector)
     K(u) = [0 -u[3] u[2]; u[3] 0 -u[1]; -u[2] u[1] 0];
 
     θ = LinearAlgebra.norm(S);
-    u = S/θ;
-
-    R = LinearAlgebra.diagm([1, 1, 1]) + sin(θ)*K(u) + (1-cos(θ))*K(u)*K(u);
+    
+    if θ <= 1e-30
+    	R = LinearAlgebra.diagm([1, 1, 1]);
+    else
+    	u = S/θ;
+	R = LinearAlgebra.diagm([1, 1, 1]) + sin(θ)*K(u) + (1-cos(θ))*K(u)*K(u);
+    end
+    
     return R;
 end
 
