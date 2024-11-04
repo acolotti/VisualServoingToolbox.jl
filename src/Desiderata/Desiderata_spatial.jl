@@ -9,7 +9,8 @@ function getUniformSampleFrom3Sphere()
     # all the stuff happening here is to pick a sample from a uniform distribution over a sphere.
     # for a reference, check: Marsaglia1972
     qt = ones(4);
-
+    norm²(v) = sum(e^2 for e in v);
+	
     while norm²(qt[1:2])>=1 || norm²(qt[3:4])>=1
         qt[1:4] = (rand(Float64,4).*2).-1;
     end
