@@ -884,6 +884,7 @@ end
     - `interpolation_factor::Integer` : number of points plotted between two instants of time.
     - `live_video::Bool` : discriminates between showing the video on screen or saving to file.
     - `logarithmic_time::Bool` : time goes faster as it increases, rendering exponential convergence (almost) linear.
+    - `object_parameters::NamedTuple` : 3D object's parameters.
     - `row_widths` : vector of Floats, sets the width of each row (in percentage).
     - `show_tracks_in_3D::Bool` : flag to plot a persistent "tail" representing the cameras trajectories (in 3D).
     - `show_tracks_in_screen::Bool` : flag to plot a persistent "tail" representing the points trajectories (in features space).
