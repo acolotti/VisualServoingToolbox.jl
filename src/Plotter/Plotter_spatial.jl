@@ -353,7 +353,7 @@ function plotImageTrajectories!(ax, traj::Union{Vector{VS.VSTrajectory{VS.spatia
         GLM.scatter!(ax, s_tmp[1], s_tmp[2], marker = :cross,
         markersize = point_size+2, color = desired_color);
 
-        if show_frame_in_screen
+        if show_frame
             s_tf = s(desired_pose,P_frame);
             GLM.lines!(ax,s_tf[1], s_tf[2], linewidth = frame_thickness, color = desired_color);
         end

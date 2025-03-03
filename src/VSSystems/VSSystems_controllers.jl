@@ -211,6 +211,12 @@ function metaController(::typeof(spatial), x, p)
     P = p.P;
     sd = p.sd;
     λ = haskey(p,:λ) ? p.λ : 1;
+    adaptive_gain = haskey(p,:adaptive_gain) && p.adaptive_gain;
+    dt = haskey(p,:dt) ? p.dt : 0;
+    
+    if adaptive_gain && dt <= 0
+    	@error "Time step `dt` required to apply adaptive gain."
+    end
 
     N = size(P,2);
 
@@ -256,5 +262,8 @@ function metaController(::typeof(spatial), x, p)
         end
     end
     
-    return λ * project(τb, g, p.ϵ, p.ρ);
+    τm = project(τb, g, p.ϵ, p.ρ);
+    adaptive_gain && (λ = min(-transpose(τm)*g/(dt * transpose(L*τm)*L*τm),λ));
+    
+    return λ * τm;
 end
