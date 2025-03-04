@@ -1,6 +1,8 @@
 # VisualServoingToolbox
 
-Simple Julia package to study Image-Based Visual Servoing (IBVS) systems. It allows to run simulations and plot/animate the resulting trajectories for several kinds of IBVS controllers.
+VisualServoingToolbox.jl is a Julia package to study the behavior and equilibria of Image-Based Visual Servoing (IBVS) systems. It allows to run simulations of both ideal and realistic visual servoing systems in a reliable way. The package implements several state-of-the-art simulation techniques for dynamical systems evolving on SE(3) (i.e., the group of roto-translations in 3D), ranging from simple adaptations of the Euler method, useful for simulating real-world behavior, to advanced techniques for the simulation of stiff systems, which are needed to capture the system’s behavior in pathological situations (e.g., if the camera tries to hit the object, as it is the case in one of the videos shown below).
+
+the package also provides a fast, numerical alternative for the equilibria computation methodology developed in [this paper](https://hal.science/hal-04628273v1), based on homotopy continuation, as well as a simple interface to produce publication-ready plots and videos.
 
 Here are a few examples of animations that can be done with it:
 
