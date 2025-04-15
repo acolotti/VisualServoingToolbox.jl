@@ -692,8 +692,14 @@ function plotCameras!(ax, oxcs; O::Union{GeometricalObject,Nothing} = nothing, b
         return maximum(v) - minimum(v);
     end
     
-    coordinates = isa(O,Points) ? [[x[j] for x in [oxcs...,[O[:,i] for i in axes(O,2)]...]] for j in 1:3] : [[x[j] for x in oxcs] for j in 1:3];
-    s = scale*(1+maximum(map(largestDistance, coordinates)))/100; # by default, camera is ~4% w.r.t. the largest axis width
+    # the following if condition means that the axes limits are already set
+    # moreover, since we consider the maximum, the resize_axes part doesn't change anything
+    if ax.finallimits[].origin != [0,0,0] || ax.finallimits[].widths != [1,1,1]
+    	s = scale*(1+maximum(ax.finallimits[].widths))/100;
+    else
+    	coordinates = isa(O,Points) ? [[x[j] for x in [oxcs...,[O[:,i] for i in axes(O,2)]...]] for j in 1:3] : [[x[j] for x in oxcs] for j in 1:3];
+    	s = scale*(1+maximum(map(largestDistance, coordinates)))/100; # by default, camera is ~4% w.r.t. the largest axis width
+    end
     
     v,f,sc = getCameraShape(barycenter);
 
@@ -712,6 +718,9 @@ function plotCameras!(ax, oxcs; O::Union{GeometricalObject,Nothing} = nothing, b
         end
     end
 
+    # plot the 3D object, if provided
+    !isa(O, Nothing) && (plotObject!(ax,O,object_parameters));
+
     if resize_axes
         # what follows is a hack to give the plot a "cubic" shape
         GLM.reset_limits!(ax); # updates axes limits to fit the content of ax
@@ -727,9 +736,6 @@ function plotCameras!(ax, oxcs; O::Union{GeometricalObject,Nothing} = nothing, b
 
         GLM.limits!(ax,limits...);
     end
-
-    # plot the 3D object, if provided
-    !isa(O, Nothing) && (plotObject!(ax,O,object_parameters));
 end
 
 function plotScreen(oxcs::Vector{T} where T<:AbstractVector, P::AbstractMatrix; 
