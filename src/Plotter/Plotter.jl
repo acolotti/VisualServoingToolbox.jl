@@ -1,6 +1,5 @@
 module Plotter
 
-    import Plots
     import GLMakie as GLM
     import LinearAlgebra as LA
     import Dates

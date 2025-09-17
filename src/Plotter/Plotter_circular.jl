@@ -1,17 +1,17 @@
-function plotCameraTrajectories(traj::Vector{VS.VSTrajectory{VS.circular}}, P::AbstractMatrix = [0 0]; scale::Int=12)
-
-    (xTraj,zTraj,xBegin,zBegin,xFinal,zFinal) = Uti.vectorizeTrajectories(traj);
-
-    plt = Plots.plot(xTraj,zTraj,linecolor=:blue,aspect_ratio = 1,legend=:none);
+function plotCameraTrajectories(traj::Vector{VS.VSTrajectory{VS.circular}}, P::AbstractMatrix = [0 0]; point_size::Real = 10, scale::Int=12)
+    fig = GLM.Figure();
+    ax = GLM.Axis(fig[1,1], title = "", aspect = GLM.DataAspect());
 
     if P != [0 0]
-        Plots.scatter!(plt,P[1,:], P[2,:], m=(10,:o,:black));
+        GLM.scatter!(ax, P[1,:], P[2,:], markersize = point_size, color = :black); # plots tracking points
     end
 
-    Plots.plot!(plt,xBegin,zBegin,m=(scale,:o),markercolor=:purple,linetype=:scatter,opacity=.1);
-    Plots.plot!(plt,xFinal,zFinal,m=(scale,:o),markercolor=:blue,linetype=:scatter,opacity=.2);
+    for t in traj
+        GLM.lines!(ax,map(e->GLM.Point2f(e[1:2]),t.u),color=:blue);
+        GLM.scatter!(ax, GLM.Point2f.([t.u[1],t.u[end]]), markersize = scale, color = [GLM.RGBA{Float32}(0, 0, 1, 0.1),GLM.RGBA{Float32}(160/255, 32/255, 240/255, 0.2)]);
+    end
 
-    return plt;
+    return fig;
 end
 
 function animateTrajectories(traj::Vector{VS.VSTrajectory{VS.circular}}, P::AbstractMatrix = [0 0]; scale::Int=15, filename::String = "", duration::Int = 10, simEndTime::Int = 0)
@@ -80,20 +80,4 @@ function potentialVisualization(::typeof(VS.circular),P::AbstractMatrix,sd::Abst
 
     GLM.set_theme!(GLM.theme_light());
     GLM.surface(x,z,e);    
-end
-
-function getCircularShapes(x::Vector{<:Real},z::Vector{<:Real},θ::Vector{<:Real},mSize::Real = 0.15)
-    n = length(x);
-    xS = Array{Float64}(undef,4*n);
-    zS = Array{Float64}(undef,4*n);
-
-    R(θ) = [cos(θ) sin(θ); -sin(θ) cos(θ)];
-
-    for i = 1:n
-        currentTriangle = mSize*R(θ[i])*[-1 1 0; -1 -1 1] + [x[i];z[i]]*[1 1 1];
-        xS[4*i-3:4*i] = [currentTriangle[1,:]..., NaN];
-        zS[4*i-3:4*i] = [currentTriangle[2,:]..., NaN];
-    end
-
-    return Plots.Shape(xS,zS);
 end
