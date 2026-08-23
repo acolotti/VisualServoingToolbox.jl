@@ -1,8 +1,26 @@
 module Plotter
 
-    import GLMakie as GLM
+    # Plotting code uses Makie's backend-independent API. GLMakie remains the
+    # default backend for compatibility, but callers may activate CairoMakie or
+    # another Makie backend before loading VisualServoingToolbox.
+    import Makie as GLM
     import LinearAlgebra as LA
     import Dates
+
+    const _GLMAKIE_PKGID = Base.PkgId(
+        Base.UUID("e9467ef8-e4e7-5192-8a1a-b1aee30e663a"),
+        "GLMakie",
+    )
+
+    function activateDefaultBackend!()
+        !ismissing(GLM.current_backend()) && return nothing
+
+        autostart = lowercase(get(ENV, "VST_AUTOSTART_GLMAKIE", "true"))
+        autostart in ("0", "false", "no", "off") && return nothing
+
+        Base.require(_GLMAKIE_PKGID)
+        return nothing
+    end
 
     import ..Desiderata as Des
     import ..RotationConversions as RC

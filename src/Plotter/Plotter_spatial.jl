@@ -819,7 +819,7 @@ end
 
 function colorsInitialization(colors, n, color_gradient = false)
     if isa(colors,Nothing) # default colors
-        colors = color_gradient ? getColorShades(n) : repeat(GLM.Makie.wong_colors(),n÷7+1)[1:n];
+        colors = color_gradient ? getColorShades(n) : repeat(GLM.wong_colors(),n÷7+1)[1:n];
     elseif isa(colors,Union{GLM.ColorAlpha, GLM.Color, Symbol})
         colors = [colors for _ in 1:n];
     elseif isa(colors,Vector) && length(colors) != n
@@ -861,7 +861,7 @@ function themeInitialization(theme)
 end
 
 """
-    function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layout, P::AbstractMatrix = [0 0]; column_widths = nothing, desired_pose::Vector{T} where T <: Real = [0], filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., framerate::Integer = 30, interpolation_factor::Integer = 1, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2, live_video::Bool = false, logarithmic_time::Bool = false, row_widths = nothing, show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, theme::String = "", title::Union{String,GLM.Makie.LaTeXStrings.LaTeXString} = "", video_duration::Real = 30, video_resolution::Tuple{Int64, Int64} = (1440,1080))
+    function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layout, P::AbstractMatrix = [0 0]; column_widths = nothing, desired_pose::Vector{T} where T <: Real = [0], filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., framerate::Integer = 30, interpolation_factor::Integer = 1, lines_order::Union{Nothing,Vector{T} where T<:Integer} = nothing, lines_thickness::Real = 2, live_video::Bool = false, logarithmic_time::Bool = false, row_widths = nothing, show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, theme::String = "", title::Union{String,GLM.LaTeXStrings.LaTeXString} = "", video_duration::Real = 30, video_resolution::Tuple{Int64, Int64} = (1440,1080))
     
     Creates a video with possibly several "views", as defined by `axes_layout`, both in state space and features space.
 
@@ -895,7 +895,7 @@ end
     - `show_tracks_in_3D::Bool` : flag to plot a persistent "tail" representing the cameras trajectories (in 3D).
     - `show_tracks_in_screen::Bool` : flag to plot a persistent "tail" representing the points trajectories (in features space).
     - `theme::String` : set plots theme, by default it's the GLMakie one. Other options are: "presentation" (for theme_ggplot2), "dark" (for theme_black)
-    - `title::Union{String,GLM.Makie.LaTeXStrings.LaTeXString}` : figure title.
+    - `title::Union{String,GLM.LaTeXStrings.LaTeXString}` : figure title.
     - `video_duration::Real` : video duration in seconds.
     - `video_resolution::Tuple{Int64, Int64}` : video resolution (e.g., (1920,1080)).
 """
@@ -903,7 +903,7 @@ function showLayedOutVideo(traj::Vector{VS.VSTrajectory{VS.spatial}}, axes_layou
     column_widths = nothing, desired_pose::Vector{T} where T <: Real = [0], filename::Union{String,Nothing} = nothing, final_time::Real = 0, initial_time::Real = 0., 
     framerate::Integer = 30, interpolation_factor::Integer = 1, object_parameters::NamedTuple = NamedTuple(),
     live_video::Bool = false, logarithmic_time::Bool = false, row_widths = nothing, show_tracks_in_3D::Bool = true, show_tracks_in_screen::Bool = true, 
-    theme::String = "", title::Union{String,GLM.Makie.LaTeXStrings.LaTeXString} = "", video_duration::Real = 30, video_resolution::Tuple{Int64, Int64} = (1920,1080))
+    theme::String = "", title::Union{String,GLM.LaTeXStrings.LaTeXString} = "", video_duration::Real = 30, video_resolution::Tuple{Int64, Int64} = (1920,1080))
 
     #=======
 
@@ -1085,7 +1085,7 @@ function initializeCameraVideo!(ax, time, intTrs, timestamps; O::Union{Geometric
     colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, desired_pose::Vector{T} where T <: Real = [0],
     elevation = nothing, object_parameters::NamedTuple = NamedTuple(), scale::Real=4, static_colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing,
     static_poses::Vector{Vector{T}} where T <: Real = [[0]], style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid,
-    title::Union{Nothing,String,GLM.Makie.LaTeXStrings.LaTeXString} = nothing)
+    title::Union{Nothing,String,GLM.LaTeXStrings.LaTeXString} = nothing)
 
     #=======
 
@@ -1186,7 +1186,7 @@ end
 function initializeImageVideo!(ax_screen, time, intTrs, timestamps;
     O::Points, colors::Union{T,Vector{T},Nothing} where T<:Union{GLM.Color,GLM.ColorAlpha,Symbol} = nothing, color_gradient::Bool = false, 
     desired_pose::Vector{T} where T <: Real = [0], object_parameters::NamedTuple = NamedTuple(), screen_limits::Vector{T} where T<:Real = [0],
-    style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid, title::Union{Nothing,String,GLM.Makie.LaTeXStrings.LaTeXString} = nothing)
+    style::Union{T, Vector{T}} where T <: Union{Symbol, Vector{N} where N<:Real} = :solid, title::Union{Nothing,String,GLM.LaTeXStrings.LaTeXString} = nothing)
 
     #=======
 

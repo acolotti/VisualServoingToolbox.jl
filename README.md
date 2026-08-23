@@ -14,4 +14,44 @@ https://github.com/acolotti/VisualServoingToolbox.jl/assets/119665057/5ec0f7e7-b
 
 One of the aims of the package is also to provide an easy interface to extend it with new, custom systems, even though it is currently undocumented.
 
+## Headless plotting
+
+GLMakie remains the default plotting backend, so existing code can continue to
+load the package as usual:
+
+```julia
+using VisualServoingToolbox
+```
+
+For a headless environment, activate CairoMakie before loading the toolbox:
+
+```julia
+using CairoMakie
+using VisualServoingToolbox
+```
+
+For a numerical-only process that does not need a plotting backend, disable the
+default GLMakie activation before loading the package:
+
+```julia
+ENV["VST_AUTOSTART_GLMAKIE"] = "false"
+using VisualServoingToolbox
+```
+
+Plotting functions can still be used after a Makie backend is activated later.
+
+If a workflow only needs system definitions, trajectory types, utilities, and
+plotting, it can also skip the differential-equation simulator and equilibria
+solver. This is an opt-in compile-time preference; the default remains the full
+package for backward compatibility:
+
+```julia
+using Preferences
+set_preferences!("VisualServoingToolbox", "lightweight" => true)
+```
+
+Restart Julia after changing this preference. Set it back to `false` to restore
+the full package. In lightweight mode, `simulate` and the equilibria-computation
+functions are intentionally unavailable.
+
 VisualServoingToolbox.jl has been developed mainly for internal use and it will most likely remain in permanent beta. It is released under the [CRAPL](https://matt.might.net/articles/crapl/).
